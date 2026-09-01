@@ -1,0 +1,26 @@
+name: edith-weekly-digest
+on:
+  schedule:
+    - cron: '0 10 * * 0'   # Sunday 10:00 UTC (matches Hermes edith-weekly-digest)
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install requests
+      - name: Run weekly digest
+        run: python scripts/edith_weekly_digest.py
+        env:
+          MASTODON_TOKEN: ${{ secrets.MASTODON_TOKEN }}
+      - name: Commit state
+        run: |
+          git config user.name "edith-bot"
+          git config user.email "edith-bot@users.noreply.github.com"
+          git add state/
+          if git diff --cached --quiet; then echo "no state changes"; else git commit -m "state: weekly-digest $(date -u +%Y%m%dT%H%M%SZ)" && git push; fi

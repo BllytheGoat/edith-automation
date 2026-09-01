@@ -1,0 +1,26 @@
+name: edith-portfolio-sync
+on:
+  schedule:
+    - cron: '0 0 * * 0'    # Sunday 00:00 UTC (matches Hermes edith-portfolio-sync)
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install requests
+      - name: Run portfolio sync
+        run: python scripts/edith_portfolio.py
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      - name: Commit state
+        run: |
+          git config user.name "edith-bot"
+          git config user.email "edith-bot@users.noreply.github.com"
+          git add state/
+          if git diff --cached --quiet; then echo "no state changes"; else git commit -m "state: portfolio-sync $(date -u +%Y%m%dT%H%M%SZ)" && git push; fi

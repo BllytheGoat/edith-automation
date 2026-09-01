@@ -1,0 +1,27 @@
+name: edith-reply-handler
+on:
+  schedule:
+    - cron: '*/30 * * * *'  # every 30 min (matches Hermes edith-reply-handler)
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install requests
+      - name: Run reply handler
+        run: python scripts/edith_reply.py
+        env:
+          AGNES_API_KEY: ${{ secrets.AGNES_API_KEY }}
+          MASTODON_TOKEN: ${{ secrets.MASTODON_TOKEN }}
+      - name: Commit state
+        run: |
+          git config user.name "edith-bot"
+          git config user.email "edith-bot@users.noreply.github.com"
+          git add state/
+          if git diff --cached --quiet; then echo "no state changes"; else git commit -m "state: reply-handler $(date -u +%Y%m%dT%H%M%SZ)" && git push; fi
