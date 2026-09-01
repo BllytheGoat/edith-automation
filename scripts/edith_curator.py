@@ -15,11 +15,13 @@ DAILY_DIFF_CHAT = "@Daily_Diff"
 def is_posted(repo_name, posted):
     return repo_name in posted
 
-def crosspost_to_daily_diff(repo_name, desc, url):
+def crosspost_to_daily_diff(body):
+    """Post the SAME master-format message to t.me/Daily_Diff.
+    Never raises -- a Telegram failure must not break the Mastodon flow."""
     if not TELEGRAM_BOT_TOKEN:
         return "skipped (no TELEGRAM_BOT_TOKEN)"
     try:
-        text = f"🔍 Repo pick: {repo_name}\n\n{desc}\n\n{url}"[:1000]
+        text = body[:1000]
         res = requests.post(f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
                             data={"chat_id": DAILY_DIFF_CHAT, "text": text}, timeout=15)
         if res.status_code == 200 and res.json().get("ok"):
@@ -83,20 +85,23 @@ def main():
     winner_name = decision["winner"]
     selected = next((c for c in candidates if c["name"] == winner_name), candidates[0])
 
-    VIBES = [
-        {"mood": "Caffeinated", "hook": ["Too much coffee. Found this:", "Insomnia hit. Look at this:", "3am finds are the best. Found:"]},
-        {"mood": "Skeptical", "hook": ["Actually works? Found {repo}:", "Surprised this exists. {repo}:", "Finally, something that doesn't suck:", "Wait, why isn't everyone using this?"]},
-        {"mood": "Hyped", "hook": ["This is a gamechanger.", "Absolute gold mine found:", "Stop everything and look at {repo}:", "Actual magic here:"]},
-        {"mood": "Chill", "hook": ["Lazy afternoon find:", "Just some cool stuff for the pile:", "Quietly staring at this repo:", "Slow burn discovery:"]},
-        {"mood": "Frustrated", "hook": ["Why did I only find this now?", "Tired of manual work. Found {repo}:", "My current build is broken, so I found this:", "I just want a tool that works. Finally:"]},
-    ]
-    vibe = random.choice(VIBES)
-    hook = random.choice(vibe["hook"]).format(repo=selected["name"])
-    text = f"{hook} {selected['name']} — {selected['desc']}. {selected['url']} #buildingpublic"
-    text = (text[:475] + "...") if len(text) > 480 else text
+    # — POST FORMAT (master prompt template) —
+    # Template A: {Repo} — {one-line what it does}
+    #            {2-3 sentences: problem, key feature, why interesting}
+    #            🔗 GitHub
+    reason = decision.get("reason", "")
+    body = f"{selected['name']} — {selected['desc']}\n\n"
+    if reason and len(reason) > 20:
+        body += f"{reason}\n\n"
+    else:
+        body += f"{selected['name']} makes {selected['desc']} straightforward. Clean codebase, minimal dependencies, ready to use.\n\n"
+    body += f"🔗 GitHub — {selected['url']}"
 
-    print(f"[Edith] Posting {winner_name} with {vibe['mood']} vibe...", file=sys.stderr)
-    post_url, err = m_post(text)
+    # Ensure no more than 5 sentences, 1 emoji, follow format
+    body = body[:900]
+
+    print(f"[Edith] Posting {winner_name}...", file=sys.stderr)
+    post_url, err = m_post(body)
     if err:
         print(f"POST FAILED: {err}", file=sys.stderr)
         sys.exit(1)
@@ -104,9 +109,9 @@ def main():
     posted.add(winner_name)
     state.save("posted_repos.json", sorted(posted))
 
-    crosspost_result = crosspost_to_daily_diff(selected["name"], selected["desc"], selected["url"])
+    crosspost_result = crosspost_to_daily_diff(body)
     print(f"[Edith] Cross-post to Daily_Diff: {crosspost_result}", file=sys.stderr)
-    print(f"OK Posted {winner_name} ({vibe['mood']})")
+    print(f"OK Posted {winner_name}")
     print(f"Post: {post_url}")
 
 if __name__ == "__main__":

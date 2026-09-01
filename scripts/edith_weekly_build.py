@@ -132,7 +132,14 @@ def main():
             print(f"BUILD FAILED at verification ({url}): {err}")
             sys.exit(1)
 
-    caption = f"Shipped {title} — new tiny tool, runs entirely client-side. {url} more tools → t.me/Daily_Diff #buildinpublic"
+    # — POST FORMAT (master prompt template) —
+    # Template B: {Name} — {one-line what it is}
+    #             {2-3 sentences: what it does, who it's for, key capability}
+    #             🔗 Link
+    caption = (f"{title} — a tiny, purely client-side {category.lower()} tool, runs entirely in the browser. "
+               f"No backend, no install, no data leaves your machine. "
+               f"Open source and free, shipped as part of the Daily Diff tool set.\n\n"
+               f"🔗 {url}")[:900]
     print(f"[Edith] Posting to Mastodon...", file=sys.stderr)
     post_url, err = m_post(caption)
     if err:
