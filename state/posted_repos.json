@@ -16,5 +16,6 @@
   "google/artemis",
   "guillaumemeyer/watermarks-remover",
   "tigerless-labs/agent-memory",
-  "wang2122/sprix-sage-router"
+  "wang2122/sprix-sage-router",
+  "xzf-thu/VoiceMem"
 ]
